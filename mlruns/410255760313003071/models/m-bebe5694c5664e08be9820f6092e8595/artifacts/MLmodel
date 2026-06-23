@@ -1,0 +1,22 @@
+artifact_path: file:///d:/XGBoost - Project/mlruns/410255760313003071/models/m-bebe5694c5664e08be9820f6092e8595/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.12.4
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.sklearn.XGBClassifier
+    model_format: ubj
+    xgb_version: 3.3.0
+mlflow_version: 3.14.0
+model_id: m-bebe5694c5664e08be9820f6092e8595
+model_size_bytes: 231109
+model_uuid: m-bebe5694c5664e08be9820f6092e8595
+prompts: null
+run_id: f9707dc4d1864aae89e0a75bfab48bdc
+utc_time_created: '2026-06-23 02:47:36.455972'

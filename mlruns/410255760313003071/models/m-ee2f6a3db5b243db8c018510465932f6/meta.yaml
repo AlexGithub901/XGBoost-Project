@@ -1,0 +1,10 @@
+artifact_location: file:///d:/XGBoost - Project/mlruns/410255760313003071/models/m-ee2f6a3db5b243db8c018510465932f6/artifacts
+creation_timestamp: 1782236080662
+experiment_id: '410255760313003071'
+last_updated_timestamp: 1782236102730
+model_id: m-ee2f6a3db5b243db8c018510465932f6
+model_type: null
+name: xgboost_model
+source_run_id: 99e4eb3e4c9f486792f24d75ceae7fc5
+status: 2
+status_message: null

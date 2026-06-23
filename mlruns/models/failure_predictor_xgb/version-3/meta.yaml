@@ -1,0 +1,16 @@
+creation_timestamp: 1782236245474
+current_stage: None
+deployment_job_state: null
+description: null
+last_updated_timestamp: 1782236245474
+model_id: m-f4e4a1e309cc4527a6c79f4308793bf0
+name: failure_predictor_xgb
+run_id: 4d78828ca4204b4695ae0d6ed30f7fd9
+run_link: null
+source: models:/m-f4e4a1e309cc4527a6c79f4308793bf0
+status: READY
+status_message: null
+storage_location: file:///d:/XGBoost - Project/mlruns/410255760313003071/models/m-f4e4a1e309cc4527a6c79f4308793bf0/artifacts
+user_id: null
+version: 3
+workspace: default

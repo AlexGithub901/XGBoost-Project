@@ -1,0 +1,14 @@
+artifact_uri: file:///d:/XGBoost - Project/mlruns/410255760313003071/4da0253b94a742ed849b6f6964157e9f/artifacts
+end_time: 1782236510669
+entry_point_name: ''
+experiment_id: '410255760313003071'
+lifecycle_stage: active
+run_id: 4da0253b94a742ed849b6f6964157e9f
+run_name: tuned_xgboost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1782236502454
+status: 3
+tags: []
+user_id: Aniket Pravin Redij
