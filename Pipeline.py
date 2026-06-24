@@ -4,7 +4,10 @@ import mlflow
 import mlflow.xgboost
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.preprocessing import StandardScaler
+import matplotlib
+matplotlib.use('Agg')                # non‑interactive backend for CI
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
@@ -19,10 +22,14 @@ try:
 except ImportError:
     OPTUNA_AVAILABLE = False
 
-TRAIN_PATH = os.path.join(r"D:\XGBoost - Project\data\processed", "X_train.csv")
-TEST_PATH = os.path.join(r"D:\XGBoost - Project\data\processed", "X_test.csv")
-YTRAIN_PATH = os.path.join(r"D:\XGBoost - Project\data\processed", "y_train.csv")
-YTEST_PATH = os.path.join(r"D:\XGBoost - Project\data\processed", "y_test.csv")
+# ============== RELATIVE PATHS (safe for any OS) ==============
+RAW_DATA = "data/ai4i2020.csv"
+PROCESSED_DIR = "data/processed"
+X_TRAIN_PATH = os.path.join(PROCESSED_DIR, "X_train.csv")
+X_TEST_PATH  = os.path.join(PROCESSED_DIR, "X_test.csv")
+Y_TRAIN_PATH = os.path.join(PROCESSED_DIR, "y_train.csv")
+Y_TEST_PATH  = os.path.join(PROCESSED_DIR, "y_test.csv")
+SCALER_PATH  = os.path.join("models", "scaler.joblib")
 
 EXPERIMENT_NAME = "predictive_maintenance_xgboost"
 MODEL_REGISTRY_NAME = "failure_predictor_xgb"
@@ -30,29 +37,64 @@ N_TRIALS = 30
 CV_FOLDS = 5
 RANDOM_STATE = 42
 
-def clean_column_names(df):
-    df.columns = [col.replace("[", "").replace("]", "").replace(" ", "_")
-                  for col in df.columns]
-    return df
+def preprocess_and_save():
+    """Preprocess raw data and save train/test CSV + scaler."""
+    print("Processed data not found. Running preprocessing...")
+    df = pd.read_csv(RAW_DATA)
+
+    # Rename columns – remove brackets for XGBoost
+    rename_map = {
+        "Air temperature [K]": "Air_temperature_K",
+        "Process temperature [K]": "Process_temperature_K",
+        "Rotational speed [rpm]": "Rotational_speed_rpm",
+        "Torque [Nm]": "Torque_Nm",
+        "Tool wear [min]": "Tool_wear_min"
+    }
+    df.rename(columns=rename_map, inplace=True)
+
+    # Drop non‑feature / leaky columns
+    drop_cols = ["UDI", "Product ID", "Type", "TWF", "HDF", "PWF", "OSF", "RNF"]
+    df.drop(columns=drop_cols, inplace=True, errors='ignore')
+
+    # Feature engineering
+    df["power"] = df["Torque_Nm"] * df["Rotational_speed_rpm"]
+
+    # Split
+    X = df.drop(columns=["Machine failure"])
+    y = df["Machine failure"]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE
+    )
+
+    # Scale
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Save
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    os.makedirs("models", exist_ok=True)
+    pd.DataFrame(X_train_scaled, columns=X.columns).to_csv(X_TRAIN_PATH, index=False)
+    pd.DataFrame(X_test_scaled, columns=X.columns).to_csv(X_TEST_PATH, index=False)
+    y_train.to_csv(Y_TRAIN_PATH, index=False)
+    y_test.to_csv(Y_TEST_PATH, index=False)
+    joblib.dump(scaler, SCALER_PATH)
+    print("Preprocessing complete. Files saved to", PROCESSED_DIR)
 
 def load_data():
-    missing = []
-    for path in [TRAIN_PATH, TEST_PATH, YTRAIN_PATH, YTEST_PATH]:
-        if not os.path.exists(path):
-            missing.append(path)
-    if missing:
-        print("Missing files:", missing)
-        print("Run preprocess.py first.")
-        sys.exit(1)
+    """Load processed data; create it if missing."""
+    needed = [X_TRAIN_PATH, X_TEST_PATH, Y_TRAIN_PATH, Y_TEST_PATH]
+    if not all(os.path.exists(p) for p in needed):
+        preprocess_and_save()
 
-    X_train = pd.read_csv(r"D:\XGBoost - Project\data\processed\X_train.csv")
-    X_test  = pd.read_csv(r"D:\XGBoost - Project\data\processed\X_test.csv")
-    y_train = pd.read_csv(r"D:\XGBoost - Project\data\processed\y_train.csv").values.ravel()
-    y_test  = pd.read_csv(r"D:\XGBoost - Project\data\processed\y_test.csv").values.ravel()
+    X_train = pd.read_csv(X_TRAIN_PATH)
+    X_test  = pd.read_csv(X_TEST_PATH)
+    y_train = pd.read_csv(Y_TRAIN_PATH).values.ravel()
+    y_test  = pd.read_csv(Y_TEST_PATH).values.ravel()
 
-    X_train = clean_column_names(X_train)
-    X_test  = clean_column_names(X_test)
-
+    # Ensure column names are clean (remove any residual brackets/spaces)
+    X_train.columns = X_train.columns.str.replace(r"[\[\] ]", "", regex=True)
+    X_test.columns  = X_test.columns.str.replace(r"[\[\] ]", "", regex=True)
     return X_train, X_test, y_train, y_test
 
 def compute_metrics(y_true, y_pred):
@@ -112,7 +154,7 @@ def main():
 
     mlflow.set_tracking_uri("file:///" + os.path.abspath("mlruns").replace("\\", "/"))
     mlflow.set_experiment(EXPERIMENT_NAME)
-    
+
     if OPTUNA_AVAILABLE:
         print(f"Starting hyperparameter optimization with Optuna ({N_TRIALS} trials)...")
         study = optuna.create_study(direction="maximize")
@@ -170,10 +212,9 @@ def main():
     return metrics
 
 if __name__ == "__main__":
-    import sys
     MIN_F1 = 0.7
     final_metrics = main()
-    
+
     if final_metrics["f1_score"] < MIN_F1:
         print(f"F1 score {final_metrics['f1_score']:.3f} below threshold {MIN_F1}. Failing CI.")
         sys.exit(1)
