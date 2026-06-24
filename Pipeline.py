@@ -7,12 +7,13 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 import matplotlib
-matplotlib.use('Agg')                # non‑interactive backend for CI
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import sys
 import joblib
+import shutil
 
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
@@ -22,7 +23,6 @@ try:
 except ImportError:
     OPTUNA_AVAILABLE = False
 
-# ============== RELATIVE PATHS (safe for any OS) ==============
 RAW_DATA = "data/ai4i2020.csv"
 PROCESSED_DIR = "data/processed"
 X_TRAIN_PATH = os.path.join(PROCESSED_DIR, "X_train.csv")
@@ -38,11 +38,9 @@ CV_FOLDS = 5
 RANDOM_STATE = 42
 
 def preprocess_and_save():
-    """Preprocess raw data and save train/test CSV + scaler."""
     print("Processed data not found. Running preprocessing...")
     df = pd.read_csv(RAW_DATA)
 
-    # Rename columns – remove brackets for XGBoost
     rename_map = {
         "Air temperature [K]": "Air_temperature_K",
         "Process temperature [K]": "Process_temperature_K",
@@ -52,26 +50,21 @@ def preprocess_and_save():
     }
     df.rename(columns=rename_map, inplace=True)
 
-    # Drop non‑feature / leaky columns
     drop_cols = ["UDI", "Product ID", "Type", "TWF", "HDF", "PWF", "OSF", "RNF"]
     df.drop(columns=drop_cols, inplace=True, errors='ignore')
 
-    # Feature engineering
     df["power"] = df["Torque_Nm"] * df["Rotational_speed_rpm"]
 
-    # Split
     X = df.drop(columns=["Machine failure"])
     y = df["Machine failure"]
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE
     )
 
-    # Scale
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Save
     os.makedirs(PROCESSED_DIR, exist_ok=True)
     os.makedirs("models", exist_ok=True)
     pd.DataFrame(X_train_scaled, columns=X.columns).to_csv(X_TRAIN_PATH, index=False)
@@ -82,7 +75,6 @@ def preprocess_and_save():
     print("Preprocessing complete. Files saved to", PROCESSED_DIR)
 
 def load_data():
-    """Load processed data; create it if missing."""
     needed = [X_TRAIN_PATH, X_TEST_PATH, Y_TRAIN_PATH, Y_TEST_PATH]
     if not all(os.path.exists(p) for p in needed):
         preprocess_and_save()
@@ -92,7 +84,6 @@ def load_data():
     y_train = pd.read_csv(Y_TRAIN_PATH).values.ravel()
     y_test  = pd.read_csv(Y_TEST_PATH).values.ravel()
 
-    # Ensure column names are clean (remove any residual brackets/spaces)
     X_train.columns = X_train.columns.str.replace(r"[\[\] ]", "", regex=True)
     X_test.columns  = X_test.columns.str.replace(r"[\[\] ]", "", regex=True)
     return X_train, X_test, y_train, y_test
@@ -149,11 +140,14 @@ def objective(trial, X_train, y_train):
     return np.mean(scores)
 
 def main():
+    if os.path.exists("mlruns"):
+        shutil.rmtree("mlruns")
+
+    mlflow.set_tracking_uri("mlruns")
+    mlflow.set_experiment(EXPERIMENT_NAME)
+
     X_train, X_test, y_train, y_test = load_data()
     print(f"Data loaded. Train: {X_train.shape}, Test: {X_test.shape}")
-
-    mlflow.set_tracking_uri("file:///" + os.path.abspath("mlruns").replace("\\", "/"))
-    mlflow.set_experiment(EXPERIMENT_NAME)
 
     if OPTUNA_AVAILABLE:
         print(f"Starting hyperparameter optimization with Optuna ({N_TRIALS} trials)...")
