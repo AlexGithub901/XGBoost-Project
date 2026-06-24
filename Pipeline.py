@@ -112,7 +112,7 @@ def main():
 
     mlflow.set_tracking_uri("file:///" + os.path.abspath("mlruns").replace("\\", "/"))
     mlflow.set_experiment(EXPERIMENT_NAME)
-
+    
     if OPTUNA_AVAILABLE:
         print(f"Starting hyperparameter optimization with Optuna ({N_TRIALS} trials)...")
         study = optuna.create_study(direction="maximize")
@@ -167,16 +167,15 @@ def main():
     os.remove(fi_path)
 
     print("Training pipeline complete.")
+    return metrics
 
-# ... (at the bottom of full_pipeline.py, after the main training block)
 if __name__ == "__main__":
-    main()
-    # ----- CI quality gate -----
     import sys
     MIN_F1 = 0.7
-    # metrics variable must still be accessible – if not, return it from main()
-    if metrics["f1_score"] < MIN_F1:
-        print(f"F1 {metrics['f1_score']:.3f} < {MIN_F1}. Failing CI.")
+    final_metrics = main()
+    
+    if final_metrics["f1_score"] < MIN_F1:
+        print(f"F1 score {final_metrics['f1_score']:.3f} below threshold {MIN_F1}. Failing CI.")
         sys.exit(1)
     else:
-        print(f"F1 {metrics['f1_score']:.3f} passes CI gate.")
+        print(f"F1 score {final_metrics['f1_score']:.3f} passes CI gate. Proceeding.")
