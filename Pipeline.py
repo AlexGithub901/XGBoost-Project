@@ -168,5 +168,18 @@ def main():
 
     print("Training pipeline complete.")
 
+# ... (at the bottom of full_pipeline.py, after the main training block)
+
 if __name__ == "__main__":
     main()
+    
+    # ---- CI/CD quality gate ----
+    # If this script is run by CI, we can check metrics and exit accordingly.
+    # This part only runs when the file is executed directly.
+    import sys
+    MIN_F1 = 0.7   # set your threshold
+    if metrics["f1_score"] < MIN_F1:
+        print(f"Model F1 score {metrics['f1_score']:.3f} below threshold {MIN_F1}. Failing CI.")
+        sys.exit(1)
+    else:
+        print(f"Model F1 score {metrics['f1_score']:.3f} passes threshold. CI continues.")

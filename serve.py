@@ -1,20 +1,19 @@
 import os
-os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"   # must come before mlflow import
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
 import joblib
-import mlflow
-import mlflow.xgboost
+import xgboost as xgb
 
 app = FastAPI()
 
-scaler = joblib.load(r"D:\XGBoost - Project\models\scaler.joblib")
+scaler = joblib.load("models/scaler.joblib")
 
-# Use the exact run ID from your best tuned model (replace with your actual ID)
-RUN_ID = "4da0253b94a742ed849b6f6964157e9f"
-model = mlflow.xgboost.load_model(f"runs:/{RUN_ID}/xgboost_model")
+# Load the XGBoost model from the file we copied
+model = xgb.XGBClassifier()
+model.load_model("model.ubj")
 
 class InputData(BaseModel):
     Air_temperature_K: float

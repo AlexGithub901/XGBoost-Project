@@ -3,6 +3,6 @@ creation_timestamp: 1782182864721
 deployment_job_id: null
 deployment_job_state: null
 description: null
-last_updated_timestamp: 1782236510598
+last_updated_timestamp: 1782269935856
 name: failure_predictor_xgb
 workspace: default
