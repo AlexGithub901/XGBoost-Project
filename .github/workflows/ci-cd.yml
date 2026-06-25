@@ -28,5 +28,5 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker tag failure-predictor ${{ secrets.DOCKER_USERNAME }}/failure-predictor:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/failure-predictor:latest
+          docker tag failure-predictor ${{ secrets.DOCKER_SOGEKING }}/failure-predictor:latest
+          docker push ${{ secrets.DOCKER_SOGEKING }}/failure-predictor:latest
